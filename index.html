@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>React.js et l'avenir de l'interface utilisateur HTML5</title>
+
+  <link rel="stylesheet" href="style.css">
+  <script src="//cdnjs.cloudflare.com/ajax/libs/react/0.11.2/react.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/react/0.11.2/JSXTransformer.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/showdown/0.3.1/showdown.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.min.js"></script>
+
+  <script type="text/jsx">
+    /** @jsx React.DOM */
+
+    var KEY_PREV = 37;
+    var KEY_NEXT = 39;
+    var SLIDES_URL = 'SLIDES.md';
+    var SLIDES_SEPARATOR = '~~~~';
+
+    var Presenter = React.createClass({
+      getInitialState: function() {
+        return { current: 0 };
+      },
+
+      componentDidMount: function() {
+        document.addEventListener('keyup', this.handleKeyUp, false);
+        window.addEventListener('hashchange', this.handleHashChange, false);
+        if(window.location.hash) {
+          this.dispatch(window.location.hash.substring(1));
+        }
+      },
+
+      componentWillUnmount: function() {
+        document.removeEventListener('keyup', this.handleKeyup, false);
+        window.removeEventListener('hashchange', this.handleHashChange, false);
+      },
+
+      componentDidUpdate: function() {
+        var el = this.getDOMNode();
+        var els = el.getElementsByTagName('code');
+        for(var i=0; i<els.length; i++) {
+          Prism.highlightElement(els[i], true, function() {
+            //
+          });
+        }
+      },
+
+      handleKeyUp: function(e) {
+        if(e.keyCode === KEY_PREV) {
+          this.navigate(this.state.current - 1 + 1);
+        } else if(e.keyCode === KEY_NEXT) {
+          this.navigate(this.state.current + 1 + 1);
+        }
+      },
+
+      handleHashChange: function(e) {
+        this.dispatch(window.location.hash.substring(1));
+      },
+
+      navigate: function(i) {
+        var current = clip(i, 1, this.props.slides.length);
+        window.location.hash = '#' + current;
+      },
+
+      dispatch: function(i) {
+        var current = clip(i, 1, this.props.slides.length);
+        this.setState({ current: current - 1});
+      },
+
+      render: function() {
+        var gaugeWidth = (this.state.current / (this.props.slides.length - 1) * 100) + '%';
+
+        return (
+          <div>
+            <div className="progress"><div className="gauge" style={{ width: gaugeWidth }}></div></div>
+            <div className="slide" dangerouslySetInnerHTML={{ __html: this.props.slides[this.state.current] }}></div>
+          </div>
+        );
+      }
+    });
+
+
+    fetch(SLIDES_URL, function(err, data) {
+      if(err) return console.log(err);
+
+      var conv = new Showdown.converter();
+      var slides = data.split(SLIDES_SEPARATOR).map(conv.makeHtml).map(highlight);
+
+      console.log('%d slides, %f minutes par slide', slides.length, 40 / slides.length);
+
+      function highlight(slide) {
+        return slide.replace(/<code class="(.*?)">([\s\S]*?)<\/code>/mig, function(str, language, code) {
+          return '<code class="' + language + '">' + Prism.highlight(code,  Prism.languages[language]) + '</code>';
+        });
+      }
+
+      React.renderComponent(
+        <Presenter slides={slides} />,
+        document.body
+      );
+    });
+
+
+    function clip(value, min, max) {
+      return Math.max(Math.min(value, max), min);
+    }
+
+    function fetch(url, callback) {
+      var xhr = new XMLHttpRequest();
+
+      xhr.addEventListener('load', onload, false);
+      xhr.addEventListener('error', onerror, false);
+
+      xhr.open('GET', url, true);
+      xhr.send(null);
+
+      function onload(e) {
+        if(xhr.status !== 200) {
+          var err = new Error();
+          err.code = 'ELOAD'
+          err.status = xhr.status;
+          err.message = 'failed loading "' + url + '" (' + xhr.statusText + ')';
+          callback(err);
+          return;
+        }
+        callback(null, xhr.responseText);
+      }
+
+      function onerror(e) {
+        var err = new Error();
+        err.code = 'EXHR';
+        err.message = 'error loading "' + url + '"';
+        callback(err);
+      }
+    }    
+  </script>
+</head>
+<body>
+</body>
+</html>
