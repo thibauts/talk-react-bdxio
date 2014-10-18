@@ -36,16 +36,6 @@
         window.removeEventListener('hashchange', this.handleHashChange, false);
       },
 
-      componentDidUpdate: function() {
-        var el = this.getDOMNode();
-        var els = el.getElementsByTagName('code');
-        for(var i=0; i<els.length; i++) {
-          Prism.highlightElement(els[i], true, function() {
-            //
-          });
-        }
-      },
-
       handleKeyUp: function(e) {
         if(e.keyCode === KEY_PREV) {
           this.navigate(this.state.current - 1 + 1);
